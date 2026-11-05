@@ -1,3 +1,4 @@
+
 name: Build IPTV Player APK
 
 on:
@@ -5,25 +6,52 @@ on:
   push:
     branches: [main, master]
 
+permissions:
+  contents: read
+
 jobs:
-  build-android:
-    name: Build Android APK
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-22.04
+
     steps:
       - name: Checkout project
         uses: actions/checkout@v4
 
-      - name: Build APK with Buildozer
-        id: buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
-          workdir: .
-          buildozer_version: stable
-          command: buildozer android debug
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git zip unzip \
+            autoconf libtool pkg-config \
+            zlib1g-dev libncurses-dev \
+            cmake libffi-dev libssl-dev \
+            libltdl-dev
+
+      - name: Install Buildozer
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install "Cython==0.29.36" buildozer
+
+      - name: Build Android APK
+        env:
+          BUILDOZER_WARN_ON_ROOT: "0"
+        run: |
+          buildozer android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: iptv-player-debug-apk
-          path: ${{ steps.buildozer.outputs.filename }}
+          name: iptv-player-apk
+          path: bin/*.apk
           if-no-files-found: error
